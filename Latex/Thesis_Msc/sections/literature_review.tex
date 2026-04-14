@@ -1,0 +1,95 @@
+\chapter{Literature Review}
+
+\section{Classical Yield Curve Models}
+
+The modeling of the term structure of interest rates has long been a central topic in financial
+economics. A seminal contribution is the parametric framework proposed by
+\textcite{nelson_siegel_1987}, which represents the yield curve using a small number of latent
+factors associated with its level, slope, and curvature. The main advantages of this approach
+are its parsimony, flexibility, and economic interpretability, which have led to its widespread
+use in empirical research and policy institutions.
+
+An important extension was introduced by \textcite{svensson_1994}, who augmented the
+original specification with an additional curvature component to improve the fit at longer
+maturities. The Nelson--Siegel--Svensson formulation has since become a standard tool for
+estimating sovereign yield curves, particularly in central bank applications. Despite their
+success in fitting the cross-sectional shape of the yield curve, these static specifications do
+not explicitly capture the dynamic evolution of interest rates.
+
+A dynamic interpretation of the Nelson--Siegel framework was provided by
+\textcite{diebold_li_2006}, who demonstrated that the latent yield curve factors can be modeled
+as time series processes. Their work established a connection between yield curve modeling
+and factor-based forecasting methods and laid the foundation for subsequent macro-financial
+extensions.
+
+\section{Macroeconomic Influences on the Yield Curve}
+
+A growing body of literature emphasizes the role of macroeconomic fundamentals in shaping
+yield curve dynamics. Early empirical evidence suggests that variables such as inflation,
+economic activity, and monetary policy expectations are closely related to movements in yields
+across maturities. Models that abstract from these relationships may therefore provide an
+incomplete description of interest rate behavior.
+
+\textcite{ang_piazzesi_2003} proposed a no-arbitrage framework that integrates
+macroeconomic variables into term structure modeling. Their results show that macroeconomic
+shocks significantly affect the entire yield curve, highlighting the importance of incorporating
+information from the real economy.
+
+Further contributions demonstrate that yield curve factors themselves contain information
+about future macroeconomic conditions. \textcite{diebold_rudebusch_aruoba_2006}
+developed a macro-finance model that jointly describes macroeconomic variables and yield
+curve factors within a unified dynamic system. Their findings reveal strong interactions
+between the level and slope of the yield curve and key macroeconomic indicators, reinforcing
+the view that financial and macroeconomic dynamics are closely interconnected.
+
+\section{Econometric Approaches to Yield Curve Dynamics}
+
+Econometric methods such as Vector Autoregression (VAR) and Dynamic Factor Models (DFM)
+are widely employed to analyze the joint dynamics of yield curve factors and macroeconomic
+variables. VAR models allow for flexible dynamic interactions without imposing strong
+structural assumptions, making them particularly suitable for empirical macro-finance
+applications.
+
+Dynamic factor models, as discussed by \textcite{stock_watson_2002}, provide a parsimonious
+representation of information contained in large macroeconomic datasets by summarizing
+co-movements through a small number of latent factors. When applied to yield curve modeling,
+these approaches offer a natural framework for integrating macroeconomic information into
+interest rate dynamics.
+
+Empirical studies indicate that macro-augmented yield curve models often outperform
+purely yield-based specifications in forecasting exercises, particularly at medium and long
+horizons \parencite{koop_korobilis_2010}. At the same time, these models maintain a relatively
+transparent economic interpretation, which is desirable for policy analysis and financial risk
+management.
+
+\section{Stochastic Interest Rate Models}
+
+An alternative strand of the literature focuses on stochastic models of interest rates, with
+particular emphasis on applications in pricing and risk management. Short-rate models
+describe the evolution of an instantaneous interest rate from which the entire term structure
+can be derived. Among these, the Hull--White one-factor model remains one of the most widely
+used frameworks in practice.
+
+\textcite{hull_white_1990} extended earlier mean-reverting short-rate models by allowing for
+time-dependent parameters, enabling an exact fit to the observed initial yield curve. The
+analytical tractability of the model and its suitability for pricing interest rate derivatives
+have contributed to its widespread adoption in financial institutions. However, the model
+abstracts from explicit macroeconomic mechanisms and relies primarily on market-implied
+interest rate dynamics.
+
+Due to these characteristics, stochastic short-rate models are commonly used as benchmarks
+when evaluating alternative yield curve modeling approaches, particularly those aimed at
+improving economic interpretation rather than pricing accuracy.
+
+\section{Summary and Research Gap}
+
+The literature reveals two dominant approaches to yield curve modeling. The first emphasizes
+econometric representations of yield curve factors and their relationship with macroeconomic
+variables, while the second focuses on stochastic interest rate models designed primarily for
+pricing and risk management. Although both strands have been extensively studied, direct
+empirical comparisons between macro-augmented econometric yield curve models and
+stochastic short-rate models using a consistent dataset and evaluation framework remain
+relatively limited.
+
+This thesis addresses this gap by integrating macroeconomic variables into an econometric
+yield curve model and benchmarking its performance against the Hull--White stochastic model.

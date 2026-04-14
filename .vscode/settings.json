@@ -1,0 +1,38 @@
+{
+  // LaTeX Workshop: treat this as the project root file
+  "latex-workshop.latex.rootFile.doNotPrompt": true,
+  "latex-workshop.latex.search.rootFiles": [
+    "Latex/Thesis_Msc/Thesis/main.tex"
+  ],
+
+  // Build with latexmk (pdfLaTeX + biber, which matches main.tex + biblatex)
+  "latex-workshop.latex.tools": [
+    {
+      "name": "latexmk",
+      "command": "C:/Users/HP/AppData/Local/Programs/MiKTeX/miktex/bin/x64/latexmk.exe",
+      "args": [
+        "-pdf",
+        "-interaction=nonstopmode",
+        "-synctex=1",
+        "-file-line-error",
+        "-outdir=%OUTDIR%",
+        "%DOC%"
+      ],
+      "env": {
+        "PATH": "C:/Strawberry/perl/bin;C:/Users/HP/AppData/Local/Programs/MiKTeX/miktex/bin/x64"
+      }
+    }
+  ],
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "latexmk",
+      "tools": ["latexmk"]
+    }
+  ],
+
+  // Put aux/log files next to the main.tex in an out/ folder
+  "latex-workshop.latex.outDir": "%DIR%/out",
+
+  // Optional: don’t auto-build unless you want it
+  "latex-workshop.latex.autoBuild.run": "never"
+}

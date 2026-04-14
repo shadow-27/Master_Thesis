@@ -1,0 +1,61 @@
+Thesis Proposal 
+Modern Yield Curve Modeling with Dynamic Macroeconomic Factors: 
+An Econometric Extension Benchmarked Against Hull-White Stochastic Methods 
+1. Research Motivation & Background 
+The modeling of yield and interest rate curves remains central to asset pricing, monetary 
+policy, and risk management. Traditional frameworks such as the Nelson–Siegel family and 
+the Hull–White stochastic short-rate model provide robust foundations for yield curve 
+fitting and simulation. However, recent research highlights the limitations of purely market-
+based or static models in capturing macro-financial dynamics. This thesis seeks to bridge 
+econometric yield curve modeling and stochastic interest rate modeling by incorporating 
+time-varying macroeconomic factors (GDP growth, inflation, policy rates, equity indices, 
+and exchange rates) into the yield curve estimation process, and benchmarking their 
+explanatory and forecasting power against the Hull–White model. 
+2. Research Objectives 
+1. To extend the classical Nelson–Siegel yield curve model by integrating dynamic 
+macroeconomic variables and potential regime-switching behavior. 
+2. To calibrate and simulate the Hull–White one-factor stochastic model as a benchmark for 
+yield dynamics. 
+3. To compare both approaches in terms of: 
+ - In-sample fit to observed yield curves 
+ - Out-of-sample forecasting accuracy 
+ - Economic interpretability and response to macro shocks 
+3. Methodology 
+Step 1: Yield Curve Estimation 
+Fit the Nelson–Siegel–Svensson curve to daily or monthly sovereign bond yield data to 
+extract level, slope, and curvature factors. 
+Step 2: Econometric Extension 
+Model the extracted factors using Dynamic Factor Models (DFM) or Vector Autoregression 
+(VAR) with macroeconomic indicators. Explore regime-switching (Markov-switching VAR) 
+to capture structural shifts in yield curve behavior. 
+Step 3: Stochastic Benchmark 
+Calibrate the Hull–White one-factor model to the same yield curve data. Simulate future 
+yield paths under stochastic interest rate dynamics. 
+Step 4: Comparative Evaluation 
+
+Compare model performance via RMSE, forecast error metrics, and macro sensitivity 
+analysis. Evaluate economic interpretability and robustness across market regimes. 
+ 
+ 
+4. Data Sources 
+- Bond yields: U.S. Treasury, European Government Bonds (Bloomberg, FRED, ECB, BIS, or 
+OECD databases). 
+- Macroeconomic indicators: GDP growth, CPI/inflation, policy rates, equity indices, and FX 
+rates (IMF, FRED, OECD, World Bank). 
+- Frequency: monthly or quarterly (to align with macro data). 
+- Period: at least 10–15 years to capture multiple market cycles. 
+5. Expected Deliverables 
+- Econometric model integrating macro-financial factors into yield curve dynamics. 
+- Calibrated Hull–White stochastic rate model for benchmark comparison. 
+- Quantitative comparison of model fit and forecasting accuracy. 
+- Discussion on implications for monetary policy and financial risk management. 
+- Fully documented code and reproducible data pipeline (Python/R). 
+6. Expected Contribution 
+This research aims to modernize yield curve modeling by fusing econometric and stochastic 
+frameworks. It contributes to the literature by: 
+- Quantifying the role of macroeconomic factors in explaining yield curve evolution. 
+
+- Benchmarking traditional short-rate models against macro-augmented econometric 
+alternatives. 
+- Providing practical insights for policymakers, risk managers, and quantitative analysts in a 
+post-zero-rate world.

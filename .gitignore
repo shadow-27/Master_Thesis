@@ -1,0 +1,94 @@
+﻿# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Test / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# --- Quarto ---
+.quarto/
+.quarto-cache/
+_quarto_cache/
+*_cache/
+*_files/
+_output/
+_site/
+
+# --- LaTeX ---
+# Common auxiliary/build files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.nav
+*.snm
+*.vrb
+*.xdv
+*.dvi
+*.ps
+*.xmpdata
+*.xmpi
+
+# Glossaries / indexes
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.ist
+*.xdy
+*.idx
+*.ind
+*.ilg
+*.nlo
+*.nls
+
+# latexmk output dir (used by VS Code task)
+out/
+
+# --- Editor / OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+
+# --- VS Code ---
+# Keep shared workspace tasks/settings
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+
+# --- Local PDFs (downloaded papers, etc.) ---
+/*.pdf
+/*.PDF
+
+# Proprietary/local fonts (keep local, don’t publish)
+Latex/Thesis_Msc/title_page/arial.ttf

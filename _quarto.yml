@@ -1,0 +1,20 @@
+project:
+  type: manuscript
+  output-dir: _output
+
+manuscript:
+  article: thesis.qmd
+
+format:
+  html:
+    toc: true
+    number-sections: true
+  pdf:
+    toc: true
+    number-sections: true
+    documentclass: report
+
+execute:
+  echo: false
+  warning: false
+  message: false

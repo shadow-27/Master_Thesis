@@ -1,0 +1,131 @@
+---
+title: "Yield Curve Modeling: Thesis Report"
+author: "Your Name"
+date: "2026-01-06"
+format:
+  html:
+    toc: true
+    number-sections: true
+  pdf:
+    toc: true
+    number-sections: true
+bibliography: references.bib
+---
+
+# Abstract
+
+The modeling of the yield curve plays a central role in asset pricing, monetary policy analysis, and financial risk management. Classical approaches such as the Nelson–Siegel family of models and stochastic short-rate models like Hull–White provide tractable and widely used frameworks for describing the term structure of interest rates. However, these models often rely primarily on yield curve information and may insufficiently capture the influence of macroeconomic dynamics that drive interest rate movements over time.
+
+This thesis investigates whether incorporating dynamic macroeconomic factors into yield curve modeling improves the explanatory power and forecasting performance of term structure models. The study extends the traditional Nelson–Siegel framework by linking its latent factors—level, slope, and curvature—to key macroeconomic variables such as inflation, economic activity, and monetary policy indicators through econometric techniques. The resulting macro-augmented yield curve model is evaluated against the Hull–White one-factor stochastic interest rate model, which serves as a benchmark commonly used in financial practice for pricing and risk management.
+
+Using sovereign bond yield data and macroeconomic indicators at a monthly frequency, the models are assessed in terms of in-sample fit, out-of-sample forecasting accuracy, and economic interpretability. The analysis aims to quantify the extent to which macroeconomic information contributes to explaining yield curve dynamics beyond what is captured by purely market-based stochastic models.
+
+The findings of this thesis contribute to the macro-finance literature by providing a systematic comparison between econometric yield curve models enriched with macroeconomic factors and traditional stochastic interest rate models. The results have practical implications for policymakers, risk managers, and quantitative analysts seeking more informative and robust models of interest rate dynamics in changing economic environments.
+
+# Introduction
+
+## Motivation
+
+The term structure of interest rates, commonly referred to as the yield curve, is a fundamental object in finance and macroeconomics. It summarizes market expectations about future interest rates, inflation, and economic conditions, and serves as a key input for asset pricing, portfolio allocation, and risk management. For policymakers, the yield curve provides valuable information about the stance of monetary policy and expectations about future economic activity, while for financial institutions it is central to valuation, hedging, and profitability analysis.
+
+A large body of literature has proposed models to describe and forecast the yield curve. Parametric models such as the Nelson–Siegel and Nelson–Siegel–Svensson specifications offer a parsimonious and intuitive representation of the yield curve through a small number of latent factors. In parallel, stochastic interest rate models, such as the Hull–White model, are widely used in practice due to their analytical tractability and suitability for derivative pricing. Despite their popularity, these frameworks often rely primarily on yield curve information and treat macroeconomic conditions only implicitly, if at all.
+
+Recent empirical evidence suggests that macroeconomic variables—such as inflation, output growth, and monetary policy rates—play a significant role in shaping the dynamics of the yield curve. Ignoring these factors may limit the ability of traditional models to explain yield movements and to produce accurate forecasts, particularly during periods of economic stress or structural change. This observation motivates the integration of macroeconomic information into yield curve modeling frameworks.
+
+## Research question
+
+The primary objective of this thesis is to examine whether yield curve models that explicitly incorporate macroeconomic factors provide improved explanatory power and forecasting performance compared to standard stochastic interest rate models. To address this objective, the study focuses on the following research questions:
+
+- To what extent do macroeconomic variables explain the dynamics of the latent factors of the yield curve?
+- Does a macro-augmented econometric yield curve model outperform the Hull–White one-factor model in terms of in-sample fit and out-of-sample forecasting accuracy?
+- How do the two modeling approaches differ in their economic interpretability and response to macroeconomic shocks?
+
+By answering these questions, the thesis aims to assess the practical relevance of macro-financial integration in yield curve modeling.
+
+## Contribution
+
+This thesis contributes to the existing literature in three main ways. First, it extends a widely used yield curve modeling framework by linking its latent factors to observable macroeconomic variables using econometric methods. Second, it provides a direct empirical comparison between a macro-augmented yield curve model and the Hull–White stochastic interest rate model, which remains a standard benchmark in financial practice. Third, the study offers insights into the economic interpretation of yield curve movements by explicitly relating them to macroeconomic conditions.
+
+The results of this research are relevant for both academics and practitioners, particularly in the context of monetary policy analysis, interest rate forecasting, and financial risk management.
+
+# Literature Review
+
+## Yield curve models
+
+Summarize foundational and modern yield-curve modeling approaches, including parsimonious parametric models (e.g., Nelson–Siegel / Svensson) and no-arbitrage term structure models.
+
+## Macro–finance literature
+
+Review key links between macroeconomic dynamics and the term structure, and how macro factors can inform or improve yield-curve dynamics and forecasting.
+
+# Methodology
+
+## Model(s)
+
+The modeling workflow follows two tracks and then compares them:
+
+1. Dynamic Nelson–Siegel (DNS): fit level/slope/curvature and model factor dynamics.
+2. Hull–White one-factor: calibrate a short-rate model as a benchmark.
+
+## Theory
+
+Provide the theoretical setup for each model (factor interpretation for DNS; short-rate dynamics and term structure implications for Hull–White), and the assumptions required to connect the model to observed yields.
+
+## Data
+
+Describe the dataset used to construct the yield curve(s): instrument type(s), frequency, sample period, maturity grid, and any interpolation/bootstrapping steps.
+
+### Sources
+
+List data providers (e.g., central bank, Bloomberg/Refinitiv, public datasets) and any inclusion/exclusion rules.
+
+### Transformations
+
+Document cleaning steps and transformations (e.g., converting quoted yields to zero rates, day-count conventions, interpolation, missing-value handling).
+
+## Econometric Approach / Models
+
+Explain the estimation strategy for DNS (e.g., cross-sectional fits + time-series dynamics; state-space form and filtering if used) and for Hull–White (calibration targets and objective).
+
+## Estimation
+
+Describe numerical procedures, parameter constraints, initialization, and diagnostics used for each model.
+
+## Assumptions
+
+State key modeling assumptions (measurement error structure, stationarity/dynamics assumptions for factors, no-arbitrage considerations, calibration assumptions for Hull–White).
+
+# Results
+
+## Estimation results
+
+Present fitted yield curves, parameter estimates (and their time variation), and model fit metrics across maturities.
+
+## Forecasting performance
+
+Evaluate out-of-sample performance: forecast errors by horizon/maturity, stability of predictions across regimes, and comparison between DNS and Hull–White.
+
+# Conclusions
+
+## Key findings
+
+Summarize the main empirical findings and what they imply for yield-curve modeling and practice.
+
+## Limitations
+
+Note data limitations, model misspecification risks, and any constraints from calibration/estimation choices.
+
+## Further research
+
+Outline extensions (alternative factor dynamics, additional macro factors, multi-factor short-rate models, regime-switching, different markets).
+
+# Figure From Proposal (Pasted Image)
+
+Place the pasted image file at `results/figures/pasted-image.png` (or update the path below), then rebuild.
+
+![](results/figures/pasted-image.png){fig-alt="Pasted figure from proposal"}
+
+# References
+
+::: {#refs}
+:::

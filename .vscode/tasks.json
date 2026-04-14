@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "LaTeX: Build thesis (latexmk)",
+      "type": "shell",
+      "command": "C:/Users/HP/AppData/Local/Programs/MiKTeX/miktex/bin/x64/latexmk.exe",
+      "args": [
+        "-pdf",
+        "-interaction=nonstopmode",
+        "-synctex=1",
+        "-file-line-error",
+        "-outdir=out",
+        "main.tex"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/Latex/Thesis_Msc/Thesis",
+        "env": {
+          "PATH": "C:/Strawberry/perl/bin;C:/Users/HP/AppData/Local/Programs/MiKTeX/miktex/bin/x64;${env:PATH}"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "LaTeX: Clean thesis (latexmk -c)",
+      "type": "shell",
+      "command": "C:/Users/HP/AppData/Local/Programs/MiKTeX/miktex/bin/x64/latexmk.exe",
+      "args": [
+        "-c",
+        "-outdir=out",
+        "main.tex"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/Latex/Thesis_Msc/Thesis",
+        "env": {
+          "PATH": "C:/Strawberry/perl/bin;C:/Users/HP/AppData/Local/Programs/MiKTeX/miktex/bin/x64;${env:PATH}"
+        }
+      },
+      "problemMatcher": []
+    }
+  ]
+}
