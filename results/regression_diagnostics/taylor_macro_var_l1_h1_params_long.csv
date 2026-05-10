@@ -1,0 +1,13 @@
+,term,equation,coef
+0,L1.fedfunds,fedfunds,0.9841310514148542
+1,L1.inflation,fedfunds,0.01068990460296998
+2,L1.output_gap,fedfunds,0.0045998056969063505
+3,const,fedfunds,-0.032854664028408746
+4,L1.fedfunds,inflation,0.09400492040472946
+5,L1.inflation,inflation,0.4532734028101117
+6,L1.output_gap,inflation,-0.027697790877704298
+7,const,inflation,1.4140903624789392
+8,L1.fedfunds,output_gap,-0.018042954523253996
+9,L1.inflation,output_gap,0.05855645240653129
+10,L1.output_gap,output_gap,0.9954118749741157
+11,const,output_gap,-0.08716463932621209

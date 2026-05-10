@@ -21,6 +21,11 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
+scripts/
+
+#claude
+.claude/
+CLAUDE.md
 
 # --- Quarto ---
 .quarto/
@@ -92,3 +97,18 @@ Desktop.ini
 
 # Proprietary/local fonts (keep local, don’t publish)
 Latex/Thesis_Msc/title_page/arial.ttf
+
+# --- Claude Code memory (local AI assistant state) ---
+.claude/
+
+# --- Temporary scratch files ---
+tmp_*.txt
+tmp/
+
+# --- Generated notebook copies / intermediate outputs ---
+notebooks/results/
+docs/*.html
+
+# --- Raw Excel downloads (processed CSVs committed instead) ---
+data/SSR_Estimates*.xlsx
+data/*.xlsx
