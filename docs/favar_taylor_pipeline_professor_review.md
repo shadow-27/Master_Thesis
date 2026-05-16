@@ -1,314 +1,156 @@
-# FAVAR vs Taylor Rule — Yield-Curve Forecasting Pipeline
-## End-to-end workflow for thesis supervisor review
+# FAVAR vs Taylor Rule — Yield-Curve Forecasting
 
-**Updated:** 2026-05-10 (major revision — GSW zero-coupon yields, EH Taylor Rule, sub-period analysis)
-**Primary notebook:** `notebooks/favar_taylor_comparison_gsw_executed.ipynb` (70 cells, fully executed)
-**Data:** GSW zero-coupon yields (`data/feds200628.csv`, SVENY01–SVENY30) + SSR/Krippner shadow rate (`data/processed/ssr_monthly.csv`)
-
----
-
-## Summary of key changes since last version
-
-### 2026-05-02: EH Taylor Rule added as professor's preferred model
-The "Taylor Rule" label in the main notebook referred to a **Macro-OLS** (direct h-step OLS with three Taylor variables). This has been **renamed to Macro-OLS**. A new **Taylor Rule (EH)** model was implemented: the three-stage Expectations Hypothesis construction that the professor requested — AR(1) macro forecast → Taylor Rule with interest-rate smoothing → EH yield averaging. Result: EH Taylor Rule RMSE ~1.39 at h=1 (6.7× worse than Random Walk). EH failure is the key diagnostic finding.
-
-### 2026-05-10: Three new analyses added to GSW notebook
-1. **Taylor Rule (EH+TP):** Constant term-premium correction estimated from expanding training window and added to EH yields. Result: RMSE 2.88 at h=1 — *worse* than raw EH. Diagnostic finding: EH failure is structural (neutral rate r*=2% too high post-GFC), not a missing risk premium. A constant TP from the high-rate training era (≈5.98% for 30Y) overshoots catastrophically during the low-rate test period.
-2. **Taylor Rule (Rolling):** 120-month rolling window with VAR companion-matrix stability check (AR(1) fallback when eigenvalues ≥ 1). RMSE 1.04 at h=1 — 25% better than expanding-window EH but still 5× worse than Random Walk.
-3. **Sub-period RMSE analysis:** Test window (2015-12 to 2025-12) broken into Pre-COVID (2016-2019), ZLB/COVID (2020-2021), and Hiking Cycle (2022-2025) sub-periods. Answers professor's question: Yield-VAR advantage concentrates in the Hiking Cycle (0.887×RW), while EH failure is worst in ZLB/COVID (11.97×RW).
-
-### 2026-04-19: Macro-OLS variables tightened to strict Taylor (1993) three
-Previously used all 25 macro regressors. Now uses only: inflation, output gap (industrial production), lagged Fed Funds.
+**Last updated:** 2026-05-10
+**Primary notebook:** `notebooks/favar_taylor_comparison_gsw_executed.ipynb` (72 cells, fully executed)
+**Data:** GSW zero-coupon yields + Krippner shadow short rate
 
 ---
 
-## 1) How to reproduce
+## What changed since our last meeting
 
-### 1.1 Environment
+From the discussion we had, I made four main additions to the notebook:
+
+1. Switched the yield data to **GSW zero-coupon yields** (Gürkaynak-Sack-Wright, SVENY01–SVENY30) — these are cleaner than the raw FRED Treasury series because they're already zero-coupon and interpolated across maturities.
+2. Added **Krippner's Shadow Short Rate** to handle the 2009–2015 and 2020–2021 periods where the Fed Funds rate was stuck at or near zero. During ZLB, I substitute the shadow rate for the observed FF rate.
+3. Implemented the **EH Taylor Rule** as you described — the three-stage construction: forecast macro with AR(1), generate a Taylor Rule FF path with interest-rate smoothing, then use the Expectations Hypothesis to turn that path into yield forecasts.
+4. Renamed the older OLS model to **Macro-OLS** so it doesn't get confused with the Taylor Rule.
+
+---
+
+## How to re-run
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-pip install -r requirements.txt
+python scripts/run_notebook.py notebooks/favar_taylor_comparison_gsw_executed.ipynb
 ```
 
-### 1.2 Refresh data (optional)
-
-Run `notebooks/fetch_data.ipynb` — downloads from FRED and saves:
-- `data/yields_raw.csv`
-- `data/macro_raw.csv`
-
-### 1.3 Run the full pipeline
-
-```bash
-python scripts/run_notebook.py
-```
-
-Expected runtime: ~20–40 minutes. Figures saved to `notebooks/figures/`.
+Expected runtime: 40–60 minutes. All outputs are saved back into the notebook.
 
 ---
 
-## 2) Data
+## Data
 
-### 2.1 Yield curve
+### Yield curve
 
-| FRED code | Label | Maturity |
-|-----------|-------|---------|
-| DGS1MO | 1M | 1 month |
-| DGS3MO | 3M | 3 months |
-| DGS6MO | 6M | 6 months |
-| DGS1 | 1Y | 1 year |
-| DGS2 | 2Y | 2 years |
-| DGS3 | 3Y | 3 years |
-| DGS5 | 5Y | 5 years |
-| DGS7 | 7Y | 7 years |
-| DGS10 | 10Y | 10 years |
-| DGS20 | 20Y | 20 years |
-| DGS30 | 30Y | 30 years |
+I use GSW zero-coupon yields from the Federal Reserve (`data/feds200628.csv`), covering maturities 1Y through 30Y. The sample runs from 1985-01 to 2025-12. I process raw FRED Treasury series in parallel but the GSW notebook uses the zero-coupon data as primary.
 
-Processing: daily → monthly mean → ffill/bfill. Sample: 1980-01 to 2025-12 (552 monthly obs).
+### Macro panel
 
-### 2.2 Macro panel
+35 FRED series, reduced to 25 after a 90% coverage filter. I transform flow variables (industrial production, payrolls, etc.) as log-differences annualized, and leave rates and spreads in levels. The full list includes CPI, core CPI, INDPRO, PAYEMS, Fed Funds, unemployment, T10Y2Y, VIX, and others.
 
-**35 raw series → 25 pass 90% coverage filter.** Categories and transformations:
+For the Taylor Rule models I only use three variables: inflation (headline CPI growth), output (industrial production growth), and the Fed Funds rate. That's what Taylor (1993) originally used, and using more makes no difference — Macro-OLS actually gets worse when I add variables.
 
-**Log-diff × 1200 (annualized growth rates):**
-- Price indices: CPIAUCSL (headline CPI), CPILFESL (core CPI), PCECTPI, PCEPILFE, PPIACO, PPIFGS, DCOILWTICO (oil)
-- Activity: INDPRO (industrial production), PAYEMS (payrolls), RSXFS (retail sales), HOUST (housing starts), CUMFNS (capacity utilization), DGORDER (durable goods), PERMIT (building permits), SP500, M2SL, M1SL, BOGMBASE, DTWEXBGS (USD index), ICSA (initial claims)
+### Shadow short rate
 
-**Levels (rates, spreads, indices):**
-- FEDFUNDS, DFF, UNRATE, UEMPMEAN, LNS14000025, AWHNONAG, T5YIE, MORTGAGE30US, VIXCLS, BAMLH0A0HYM2, BAA10YM, T10Y2Y, T10Y3M, MICH, UMCSENT
-
-**Additional credit spread series used in the notebook pipeline:**
-- BAMLH0A2HYC2 (high-yield credit spread)
-
-### 2.3 Taylor Rule benchmark variables (strict subset)
-
-The Taylor Rule benchmark uses only three variables from the macro panel:
-
-| Variable | Role | Transformation |
-|----------|------|----------------|
-| `inflation` | CPI-based annualized inflation | Log-diff × 1200 |
-| `output` | Industrial production growth | Log-diff × 1200 |
-| `fedfunds` | Federal Funds rate | Level |
-
-These are the canonical Taylor (1993) three arguments: inflation gap, output gap proxy, and policy inertia. They are also validated in-sample via the Fed Funds regression in Section 10.
+Loaded from `data/processed/ssr_monthly.csv` (Krippner 2015). Any month where the Fed Funds rate is at or below 0.25% gets the shadow rate substituted in. This matters most for 2009–2015 and 2020–2021.
 
 ---
 
-## 3) Data processing
+## Models
 
-### 3.1 Yield processing (`process_yields`)
-1. Ensure DatetimeIndex.
-2. Resample to month-end using monthly mean.
-3. Forward-fill then backward-fill gaps.
-4. Rename FRED codes to tenor labels.
+I run 12 models in total. The main comparison is between the **Taylor Rule variants**, **FAVAR**, and **Macro-OLS**. The rest serve as benchmarks.
 
-### 3.2 Macro processing (`process_macro`)
-1. Resample to monthly mean.
-2. Apply transformations by series type (log-diff annualized for flow series, levels for rates/spreads).
-3. Align to common monthly index.
-4. Coverage filter: keep series with ≥90% non-NaN observations. Result: 25 series.
+### Taylor Rule (EH) — professor's benchmark
 
-### 3.3 Common sample
-- 552 monthly observations: 1980-01 to 2025-12
-- Train: 1980-01 to 2015-11 (~80%)
-- Test: 2015-12 to 2025-12 (~10 years, 119 months)
+Three stages:
 
----
+**Stage 1** — forecast inflation, output, and FF jointly using a VAR(1) expanding window.
 
-## 4) Yield curve factor extraction — Nelson-Siegel
-
-Model per month $t$ for maturity $\tau$ (in years):
-
-$$y(\tau) = \beta_0 + \beta_1 \cdot \frac{1 - e^{-\tau/\lambda}}{\tau/\lambda} + \beta_2 \left(\frac{1 - e^{-\tau/\lambda}}{\tau/\lambda} - e^{-\tau/\lambda}\right)$$
-
-**Factor interpretations:** $\beta_0$ = level (long-run yield), $\beta_1$ = slope (short-vs-long), $\beta_2$ = curvature (medium-term hump), $\lambda$ = decay (estimated each month).
-
-**Estimation:** Monthly nonlinear least-squares via `scipy.optimize.minimize` (L-BFGS-B). Bounds: $\beta_0 \in [-10,20]$, $\beta_1 \in [-15,15]$, $\beta_2 \in [-15,15]$, $\lambda \in [0.1,10]$.
-
-**Lambda fix (important):** A parameterization inconsistency was corrected. Both estimation and reconstruction now use the $e^{-\tau/\lambda}$ form consistently. Previously reconstruction used $e^{-\lambda\tau}$, which caused unrealistically large factor-model RMSEs.
-
-**Lambda in forecasting:** Persistence rule: $\hat{\lambda}_t = \lambda_{t-1}$ (random walk on lambda). Fallback to sample median if missing. Median lambda in sample: 1.22.
-
-**NS summary statistics (full sample):**
-| | level | slope | curvature | lambda |
-|--|-------|-------|-----------|--------|
-| mean | 6.20 | -4.70 | 0.68 | 1.47 |
-| std | 2.92 | 3.98 | 5.56 | 1.47 |
-
----
-
-## 5) Macro factor extraction — PCA
-
-### 5.1 Variable selection
-Coverage filter (≥90% non-NaN): 25 of 35 processed series pass.
-
-### 5.2 PCA (FAVAR full panel)
-
-1. Select the 25 qualifying series.
-2. Drop rows with any missing values in those series.
-3. Standardize (zero mean, unit variance).
-4. Extract 3 principal components.
-
-**Variance explained (3F):** F1: 23.56%, F2: 15.87%, F3: 13.60% → **Total: 53.02%**
-
-**Variance explained (4F, robustness):** F4: 8.64% → **Total: 61.66%**
-
-### 5.3 PCA (FAVAR-Key4 focused panel)
-
-Four series motivated by Caldeira et al. (2023): CPI inflation (`inflation`), Federal Funds (`fedfunds`), unemployment rate (`unrate`), industrial production (`output`). Extract 2 PCA factors.
-
----
-
-## 6) Model definitions
-
-### 6.1 Taylor Rule EH (professor's benchmark — three-stage pipeline)
-
-**Stage 1 — AR(1) macro forecast** (per variable, expanding window):
-$$x_{t+j} = a + b \cdot x_{t+j-1} + \varepsilon, \quad x \in \{\pi, y, \text{FF}\}$$
-
-**Stage 2 — Taylor Rule with interest-rate smoothing** (ρ estimated by OLS on training window):
+**Stage 2** — Taylor Rule with interest-rate smoothing:
 $$i^*_t = r^* + \pi_t + 0.5(\pi_t - \pi^*) + 0.5 y_t, \quad r^* = \pi^* = 2\%$$
 $$\text{FF}_t = \rho \cdot \text{FF}_{t-1} + (1-\rho) \cdot i^*_t$$
+where $\rho$ is estimated by OLS on the training window.
 
-**Stage 3 — Expectations Hypothesis** (yields as average of expected FF path):
+**Stage 3** — Expectations Hypothesis: the yield for maturity $m$ is just the average of the expected FF path over the next $m$ months:
 $$\hat{y}^{(m)}_t = \frac{1}{m} \sum_{j=h}^{h+m-1} \widehat{\text{FF}}_{t+j}$$
 
-Shadow Short Rate (Krippner) substituted for Fed Funds at the ZLB. **Effective rate** = SSR where FF < 0.25%.
+The shadow rate replaces FF at the ZLB. This is the theoretically clean construction, but it struggles — see results.
 
-**EH failure:** RMSE 1.39 at h=1 (6.7× worse than Random Walk). Two compounding causes:
-1. Taylor Rule neutral rate r*=2% overestimates actual short rates during ZLB (2016-2021), projecting 2-4% FF when actual ≈ 0%
-2. EH ignores term premium — mechanically underestimates long yields
+### Macro-OLS
 
-### 6.2 Macro-OLS (renamed from old "Taylor Rule")
+Direct OLS per tenor using the three Taylor variables:
+$$\hat{y}^{(m)}_t = c_m + \rho_m \cdot y^{(m)}_{t-h} + b_1 \cdot \pi_{t-h} + b_2 \cdot \Delta\text{IP}_{t-h} + b_3 \cdot \text{FF}_{t-h}$$
 
-Per-tenor expanding-window OLS using **strict Taylor (1993) variables**:
+No EH assumption, no iterated forecasting — just a direct $h$-step regression. This turns out to be competitive with the structured factor models.
 
-$$\hat{y}^{(m)}_t = c_m + \rho_m \cdot y^{(m)}_{t-h} + b_{1,m} \cdot \pi_{t-h} + b_{2,m} \cdot \Delta\text{IP}_{t-h} + b_{3,m} \cdot \text{FF}_{t-h} + e^{(m)}_t$$
+### Taylor Rule (EH+TP)
 
-where $h$ = forecast horizon. Three macro predictors only, minimum 36 training observations, direct h-step (no iteration). Near-Random-Walk performance at h=1; best macro model at h=12.
+Same as EH but adds a constant term-premium correction per tenor. The TP is estimated as the expanding-window mean of historical yield minus the average shadow rate path. Included as a robustness check. The result is worse, not better — see §8.5.
 
-### 6.3 Taylor Rule (EH+TP) — robustness diagnostic
+### Taylor Rule (TVR — time-varying r*)
 
-Adds a maturity-specific constant term-premium correction to the EH Taylor Rule:
-$$\hat{y}^{(m),\text{EH+TP}}_t = \hat{y}^{(m),\text{EH}}_t + \widehat{\text{TP}}(m)$$
+Same as EH except $r^*$ at each forecast date comes from the 5-year TIPS real yield (FRED: DFII5, monthly average). Before 2003 when TIPS didn't exist, I use a constant 3% (the pre-GFC consensus). The motivation was to test whether fixing the neutral rate assumption would rehabilitate EH. It barely helps — see §8.5.
 
-where $\widehat{\text{TP}}(m)$ is the expanding-window mean of historical TP:
-$$\text{TP}_s(m) = y_s(m) - \frac{1}{m}\sum_{j=0}^{m-1} \text{SSR}_{s+j}$$
+### Taylor Rule (Rolling)
 
-**Result:** RMSE 2.88 at h=1 — worse than raw EH (1.39). The training-era 30Y TP ≈ 5.98% is far too large for the low-rate test period. This confirms EH failure is structural (neutral rate misspecification), not simply a missing risk premium.
+Same as EH but uses a 120-month rolling window instead of expanding. Includes a stability check: if the VAR companion matrix has any eigenvalue above 1, it falls back to independent AR(1) per variable.
 
-### 6.4 Taylor Rule (Rolling, 120-month window)
+### NS-VAR
 
-Same three-stage EH pipeline with a **120-month rolling window** instead of expanding:
-- Motivated by structural instability in Taylor Rule parameters across GFC / ZLB / hiking-cycle regimes
-- VAR companion-matrix stability check: if any eigenvalue ≥ 1, falls back to independent AR(1) per variable with coefficient clipped to [-0.99, 0.99]
+VAR(2) on first-differenced Nelson-Siegel factors $[\Delta\text{level},\, \Delta\text{slope},\, \Delta\text{curvature}]$. Forecasted differences are cumulated back to levels. Lambda follows a random walk in forecasting.
 
-**Result:** RMSE 1.04 at h=1 (25% improvement over expanding EH) — confirms structural instability in macro coefficients across the full sample. But still 5× worse than Random Walk; rolling window alone cannot rehabilitate EH.
+### FAVAR
 
-### 6.2 NS-VAR
+Same as NS-VAR but the state vector also includes three PCA factors from the full 25-variable macro panel:
+$$[\Delta\text{level},\, \Delta\text{slope},\, \Delta\text{curvature},\, \Delta F_1,\, \Delta F_2,\, \Delta F_3]$$
 
-State vector: $[\Delta\text{level}_t,\; \Delta\text{slope}_t,\; \Delta\text{curvature}_t]$
+Only the NS factor forecasts are used to reconstruct yields. The macro factors are internal to the VAR.
 
-- VAR(2) on differenced NS factors; expanding window, refit at each test date.
-- Forecasted factor differences are accumulated and added to lagged levels.
-- NS factors → yields via the NS formula with lagged lambda.
+### FAVAR-Key4
 
-### 6.3 FAVAR
+Same idea but uses only 4 macro series — CPI, Fed Funds, unemployment, industrial production — and extracts 2 PCA factors from those. This was motivated by Caldeira et al. (2023). It performs better than the full FAVAR but still doesn't beat NS-VAR.
 
-State vector: $[\Delta\text{level}_t,\; \Delta\text{slope}_t,\; \Delta\text{curvature}_t,\; \Delta F1_t,\; \Delta F2_t,\; \Delta F3_t]$
+### NS-RW
 
-- VAR(2) on differenced [NS factors + 3 PCA macro factors from the full 25-series panel].
-- Same expanding-window protocol as NS-VAR.
-- Only NS factor forecasts used to reconstruct yields; macro factor forecasts are internal to the VAR.
+NS factors forecasted as a multivariate random walk ($\hat{F}_{t+h} = F_t$). No VAR dynamics at all. This is the Caldeira et al. (2023) baseline.
 
-### 6.4 FAVAR-Key4 (best FAVAR variant)
+### Diebold-Li
 
-State vector: $[\Delta\text{level}_t,\; \Delta\text{slope}_t,\; \Delta\text{curvature}_t,\; \Delta K1_t,\; \Delta K2_t]$
+Fixed lambda ($\lambda = 0.0609$) Nelson-Siegel with VAR(1) dynamics on the three factors.
 
-- VAR(2) on differenced [NS factors + 2 PCA factors from {CPI, FEDFUNDS, UNRATE, INDPRO}].
-- Motivated by Caldeira et al. (2023): focused macro variables outperform broad macro panel.
-- Selected as best FAVAR variant based on multi-horizon RMSE results.
+### Yield-VAR
 
-### 6.5 NS-RW (Caldeira et al. 2023)
+VAR(1) directly on the 11 raw yield levels.
 
-State vector: $[\text{level}_t,\; \text{slope}_t,\; \text{curvature}_t]$ with identity transition matrix.
+### Random Walk
 
-- NS factors treated as a multivariate random walk: $\hat{F}_{t+h} = F_t$.
-- No VAR dynamics — purely persistence-based.
-- Tests whether NS factor structure adds value over a raw RW.
-
-### 6.6 Diebold-Li
-
-Fixed lambda $\lambda = 0.0609$ (DL standard). Monthly OLS to fit $[\beta_0, \beta_1, \beta_2]$ with fixed lambda. VAR(1) dynamics on factors. Iterated h-step forecast. Yields reconstructed via NS formula with fixed lambda.
-
-### 6.7 Random Walk
-
-$\hat{y}^{(m)}_{t+h} = y^{(m)}_t$ for all tenors and horizons. No-change benchmark.
-
-### 6.8 Yield-VAR (additional benchmark)
-
-VAR(1) on all 11 raw yield levels. Iterated h-step forecast.
+$\hat{y}^{(m)}_{t+h} = y^{(m)}_t$. No-change benchmark.
 
 ---
 
-## 7) Forecasting protocol
+## Forecasting setup
 
-All models use **pseudo out-of-sample expanding-window** evaluation:
+All models use pseudo out-of-sample expanding windows. At each test date, I refit on all data up to that point and forecast $h = 1$, $6$, and $12$ months ahead. The test window is December 2015 to December 2025 (119 months).
 
-1. At each test date $t$, fit model on all available history up to $t-1$.
-2. Forecast $h$ periods ahead.
-3. Expand history by one period; repeat.
-
-**Multi-horizon iterated VAR forecast (NS-VAR, FAVAR, NS-RW, Diebold-Li, Yield-VAR):**
-- Forecast $h$ steps via `VAR.forecast(y_last, steps=h)`
-- Cumulative diff: $\hat{y}_{t+h} = y_{t} + \sum_{k=1}^{h} \hat{\Delta}y_{t+k}$
-
-**Taylor Rule multi-horizon:** Direct h-step OLS. Regressors lagged by $h$ periods, no iteration. Training window extends only to the forecast origin (no look-ahead).
+For VAR-based models I iterate the forecast forward. For Macro-OLS and the Taylor Rule variants I use direct $h$-step OLS with regressors lagged by $h$ periods — no iteration.
 
 ---
 
-## 8) Results (GSW notebook — `favar_taylor_comparison_gsw_executed.ipynb`)
+## Results
 
-### 8.1 Configuration
-
-- Yield data: GSW zero-coupon yields (SVENY01–SVENY30), `data/feds200628.csv`
-- Sample: 1985-01 to 2025-12
-- Test window: 2015-12 to 2025-12 (119 months)
-- Train/test split: 2015-12
-- VAR lags: VAR(2) for NS-VAR, FAVAR; VAR(1) for Diebold-Li, Yield-VAR
-- PCA: 3 components (53.02% variance explained)
-- ZLB handling: Krippner SSR substituted for Fed Funds where FF < 0.25%
-
-### 8.2 Multi-horizon average RMSE (avg across 11 tenors)
+### Average RMSE across 11 tenors
 
 | Model | h=1 | h=6 | h=12 | vs RW (h=1) | vs RW (h=12) |
 |-------|-----|-----|------|-------------|--------------|
-| **Yield-VAR** | **0.1937** | **0.6726** | **1.1728** | **0.94** | **0.93** |
+| Yield-VAR | **0.1937** | **0.6726** | 1.1728 | **0.94** | 0.93 |
 | NS-VAR | 0.2049 | 0.7782 | 1.3461 | 0.99 | 1.07 |
 | Macro-OLS | 0.2053 | 0.7650 | 1.2820 | 1.00 | 1.02 |
 | Random Walk | 0.2065 | 0.7478 | 1.2590 | 1.00 | 1.00 |
 | NS-RW | 0.2105 | 0.7491 | 1.2596 | 1.02 | 1.00 |
 | FAVAR-Key4 | 0.2092 | 0.7781 | 1.3473 | 1.01 | 1.07 |
-| **Diebold-Li** | 0.2222 | **0.6757** | **1.1415** | 1.08 | **0.91** |
+| Diebold-Li | 0.2222 | **0.6757** | **1.1415** | 1.08 | **0.91** |
 | FAVAR | 0.2674 | 0.8803 | 1.4183 | 1.30 | 1.13 |
 | Taylor Rule (Rolling) | 1.0439 | 1.2907 | 1.7022 | 5.05 | 1.35 |
-| **Taylor Rule (EH)** | **1.3857** | **1.6821** | **2.1612** | **6.71** | **1.72** |
+| Taylor Rule (EH) | 1.3857 | 1.6821 | 2.1612 | 6.71 | 1.72 |
+| Taylor Rule (TVR) | 1.3775 | 1.6970 | 2.2066 | 6.67 | 1.75 |
 | Taylor Rule (EH+TP) | 2.8836 | 3.1801 | 3.5837 | 13.96 | 2.85 |
 
-**Key results:**
-- **Yield-VAR** best at h=1 and h=6; **Diebold-Li** best at h=12 (RMSE 1.14, 9% below RW)
-- **Macro-OLS ≈ NS-VAR ≈ Random Walk** at h=1 (all within 0.01 of 0.207)
-- **Taylor Rule (EH)** fails catastrophically: 6.7× worse than RW at h=1
-- **Rolling window** improves EH by 25% but remains 5× worse than RW
-- **EH+TP correction makes things worse** — see §8.5 for diagnostic
+Yield-VAR is the best model at h=1 and h=6. Diebold-Li wins at h=12. Macro-OLS and NS-VAR are essentially tied with the Random Walk at h=1 — they don't hurt but they don't help much either at short horizons.
 
-### 8.3 RMSE relative to Random Walk (ratio < 1.0 = beats RW)
+### RMSE relative to Random Walk
 
 | Model | h=1 | h=6 | h=12 |
 |-------|-----|-----|------|
-| Yield-VAR | **0.94** | **0.90** | **0.93** |
+| Yield-VAR | **0.94** | **0.90** | 0.93 |
 | NS-VAR | 0.99 | 1.04 | 1.07 |
 | Macro-OLS | 1.00 | 1.02 | 1.02 |
 | Random Walk | 1.00 | 1.00 | 1.00 |
@@ -318,213 +160,125 @@ All models use **pseudo out-of-sample expanding-window** evaluation:
 | FAVAR | 1.30 | 1.18 | 1.13 |
 | Taylor Rule (Rolling) | 5.05 | 1.73 | 1.35 |
 | Taylor Rule (EH) | 6.71 | 2.25 | 1.72 |
+| Taylor Rule (TVR) | 6.67 | 2.27 | 1.75 |
 | Taylor Rule (EH+TP) | 13.96 | 4.25 | 2.85 |
 
-### 8.4 DM test results (HLN 1997) — key findings
+### EH Taylor Rule variants — four robustness checks
 
-| Comparison | h=1 avg DM | Tenors significant (p<0.10) |
-|-----------|-----------|---------------------------|
-| NS-VAR vs EH Taylor Rule | +8.55 | 11/11 (all tenors) |
-| FAVAR vs EH Taylor Rule | +7.84 | 10/11 tenors |
-| NS-VAR vs Random Walk | −1.92 | 0/11 |
-| FAVAR vs NS-VAR | −1.77 | 0/11 (NS-VAR better) |
-| NS-RW vs NS-VAR | +1.56 | 5/11 (NS-RW better) |
-| FAVAR-Key4 vs FAVAR | +1.12 | 0/11 |
+| Variant | h=1 RMSE | h=6 RMSE | h=12 RMSE | vs EH raw | Takeaway |
+|---------|----------|----------|-----------|-----------|---------|
+| Taylor Rule (EH) | 1.3857 | 1.6821 | 2.1612 | baseline | Fixed r*=2%, expanding window |
+| Taylor Rule (TVR) | 1.3775 | 1.6970 | 2.2066 | −0.6% | Time-varying r*: barely changes anything |
+| Taylor Rule (Rolling) | 1.0439 | 1.2907 | 1.7022 | −25% | Adaptive window helps, confirms regime instability |
+| Taylor Rule (EH+TP) | 2.8836 | 3.1801 | 3.5837 | +108% | Constant TP from training era makes it much worse |
 
-- NS-VAR and FAVAR significantly beat EH Taylor Rule at h=1 (DM ≈ 8–9, all tenors)
-- No structured model significantly beats Random Walk at h=1
-- FAVAR does NOT beat NS-VAR — macro augmentation in VAR does not help
+I ran these four variants to understand where exactly EH breaks down. The answer is consistent across all of them: the problem isn't the neutral rate, and it isn't a missing term premium — it's the EH assumption itself. Averaging expected short rates gives you a yield forecast that mechanically ignores the term premium, which is 100–300 bps on long yields. You can't fix that with a parameter adjustment.
 
-### 8.5 EH Taylor Rule variant comparison
+The TVR result is the clearest evidence. Even with r* at 0.19% in 2015 and 0.78% in 2018 — values consistent with Holston-Laubach-Williams estimates — the model barely improves (0.6%). Adding a constant term premium from the training era makes it worse because the historical 30Y TP was around 5.98% but actual 30Y yields during the test period were 2–4%.
 
-| Variant | h=1 RMSE | vs EH raw | Interpretation |
-|---------|----------|-----------|---------------|
-| Taylor Rule (EH) | 1.3857 | baseline | EH with expanding window |
-| Taylor Rule (Rolling) | 1.0439 | −25% | Better; confirms structural instability |
-| Taylor Rule (EH+TP) | 2.8836 | +108% | Worse; TP from wrong interest-rate era |
+### Sub-period breakdown (h=1, RMSE relative to RW)
 
-**Why EH+TP fails:** Training-window (1985-2015) 30Y term premium ≈ 5.98%. During test period (2015-2025), actual 30Y yields were 2–4% and EH already forecasts 2–3%. Adding 5.98% TP gives 8–9% forecasts — catastrophically high. **EH failure is structural (neutral rate r*=2% too high post-GFC)**, not a missing risk premium. A time-varying risk price model (Ang-Piazzesi 2003) would be needed if EH is to be rehabilitated — a constant TP correction from a different rate regime makes it worse.
-
-### 8.6 Sub-period RMSE analysis (h=1, avg across 11 tenors)
-
-Test window broken into three economically distinct regimes:
-
-| Sub-period | Dates | Months | Key regime |
-|-----------|-------|--------|-----------|
-| Pre-COVID | 2016-01 to 2019-12 | 48 | Gradual normalisation post-GFC |
-| ZLB/COVID | 2020-01 to 2021-12 | 24 | Emergency cuts to ≈0%; QE |
-| Hiking Cycle | 2022-01 to 2025-12 | 48 | Fastest tightening in 40 years |
-
-**RMSE relative to Random Walk by sub-period (h=1):**
-
-| Model | Pre-COVID | ZLB/COVID | Hiking Cycle |
-|-------|-----------|-----------|--------------|
+| Model | Pre-COVID (2016–2019) | ZLB/COVID (2020–2021) | Hiking Cycle (2022–2025) |
+|-------|----------------------|----------------------|------------------------|
 | Random Walk | 1.000 | 1.000 | 1.000 |
-| Yield-VAR | ≈1.00 | ~0.95 | **0.887** |
+| Yield-VAR | ~1.00 | ~0.95 | **0.887** |
 | Macro-OLS | **0.964** | ~1.00 | **0.900** |
 | NS-VAR | ~0.98 | **0.937** | ~0.97 |
 | FAVAR-Key4 | ~1.02 | ~0.97 | ~1.00 |
-| Taylor Rule (EH) | **6.35×** | **11.97×** | **3.89×** |
+| Taylor Rule (EH) | 6.35 | **11.97** | 3.89 |
 
-**Key sub-period findings:**
-1. **EH failure is worst in ZLB/COVID (11.97×RW):** Taylor Rule projects 2-4% FF when actual ≈ 0%. The r*=2% neutral rate assumption is most wrong exactly when the ZLB binds.
-2. **Yield-VAR advantage concentrates in the Hiking Cycle (0.887×RW):** Answers the professor's hypothesis — the 2022-2023 tightening cycle is where the yield-level autoregression delivers the largest gains. The yield curve dynamics were highly persistent and predictable during rapid tightening.
-3. **Macro-OLS competitive in Pre-COVID and Hiking Cycle:** Macro signal from inflation/output gap is most useful when the Fed is actively responding to macro conditions (normalisation and tightening periods). Less useful at ZLB when conventional policy is constrained.
-4. **NS-VAR best in ZLB/COVID:** Factor structure captures the unusual yield-curve shape (flat/inverted at near-zero short rates) better than macro-driven models.
+A few things stand out here:
 
-### 8.7 FAVAR-4F expanded panel robustness
+- The EH Taylor Rule is worst during ZLB/COVID (11.97× RW). This makes sense — that's when the gap between r*=2% and the actual rate is largest.
+- Yield-VAR's advantage is almost entirely in the Hiking Cycle (0.887× RW). The 2022–2025 rapid tightening was highly persistent, which is exactly the kind of environment where a simple autoregression on yield levels does well.
+- Macro-OLS is competitive in both the pre-COVID and hiking cycle periods, when the Fed was actively responding to inflation and output signals.
 
-| Horizon | FAVAR-3F | FAVAR-4F | Change |
-|---------|----------|----------|--------|
-| h=1 | 0.2674 | 0.2751 | −2.9% |
-| h=6 | 0.8803 | 0.9381 | −6.6% |
-| h=12 | 1.4183 | 1.4702 | −3.7% |
+### FAVAR-4F robustness
 
-Expanding from 3 to 4 macro PCA factors makes FAVAR worse at all horizons. More macro information hurts.
+| Horizon | FAVAR-3F | FAVAR-4F |
+|---------|----------|----------|
+| h=1 | 0.2674 | 0.2751 |
+| h=6 | 0.8803 | 0.9381 |
+| h=12 | 1.4183 | 1.4702 |
 
----
-
-## 9) Statistical significance — Diebold-Mariano tests (HLN 1997)
-
-Pairwise forecast accuracy tests using the Harvey, Leybourne & Newbold (1997) modified DM statistic with Newey-West HAC variance correction. Positive DM stat ⇒ model B has lower MSE.
-
-### 9.1 Summary table (avg DM across 11 tenors)
-
-| Comparison | h=1 DM | h=1 tenors sig (p<0.10) | Direction |
-|-----------|--------|--------------------------|-----------|
-| NS-VAR vs EH Taylor Rule | +8.55 | **11/11** | NS-VAR significantly better |
-| FAVAR vs EH Taylor Rule | +7.84 | **10/11** | FAVAR significantly better |
-| NS-VAR vs Random Walk | −1.92 | 0/11 | RW marginally better, not sig |
-| FAVAR vs RW | −2.37 | 0/11 | RW better, not sig |
-| NS-RW vs RW | −0.87 | 0/11 | — |
-| FAVAR vs NS-VAR | −1.77 | 0/11 | NS-VAR better (not sig) |
-| **NS-RW vs NS-VAR** | **+1.56** | **5/11** | NS-RW significantly better at 5 tenors |
-| FAVAR-Key4 vs FAVAR | +1.12 | 0/11 | Directionally better, not sig |
-| NS-VAR vs Macro-OLS | ~0 | 0/11 | Neither dominates |
-
-**Reading:** Positive DM means model B is better (lower MSE). Sign convention: A vs B → positive = B better.
-
-### 9.2 NS-VAR vs EH Taylor Rule — per-tenor DM at h=1
-
-| Tenor | RMSE(EH) | RMSE(NS) | DM stat | p-value | Sig |
-|-------|----------|----------|---------|---------|-----|
-| 1M | ~1.2 | 0.2049 | +8+ | <0.001 | *** (NS-VAR better) |
-| 3M–30Y | 1.0–1.7 | 0.18–0.22 | +6 to +11 | <0.001 | *** (NS-VAR better) |
-
-All 11 tenors significant at p<0.001. Average DM = 8.55.
-
-### 9.3 FAVAR vs NS-VAR — per-tenor DM at h=1
-
-| Tenor | RMSE(NS) | RMSE(FAVAR) | DM stat | p-value | Sig |
-|-------|----------|-------------|---------|---------|-----|
-| 1M    | 0.2049   | 0.2674      | −2.85   | 0.005   | *** (NS better) |
-| 3M    | ~0.21    | ~0.27       | −2.47   | 0.015   | ** (NS better) |
-| 5Y–10Y | ~0.20  | ~0.25       | −1.2    | ~0.23   | — |
-
-NS-VAR significantly beats FAVAR at the short end. Adding macro PCA factors hurts short-end yield forecasts.
-
-### 9.4 NS-RW vs NS-VAR (Caldeira 2023 result)
-
-NS-RW (random-walk dynamics on NS factors) beats NS-VAR at **5/11 tenors** at h=1, p<0.10. Imposing VAR dynamics on yield-curve factors adds noise — validates Caldeira et al. (2023).
-
-### 9.5 FAVAR-Key4 vs FAVAR (focused vs broad macro factors)
-
-FAVAR-Key4 directionally better than FAVAR at all horizons (positive avg DM), but **not statistically significant** (0/11 tenors with p<0.10 at h=1). The improvement from focused to broad macro panel is real but noisy.
+Adding a fourth macro PCA factor makes FAVAR worse at every horizon. More macro information doesn't help.
 
 ---
 
-## 10) Conclusions
+## Statistical tests
 
-### 10.1 Main findings
+I use pairwise Diebold-Mariano tests (Harvey-Leybourne-Newbold 1997) with Newey-West HAC variance. A positive DM stat means model B has lower MSE.
 
-1. **Yield-VAR dominates at short horizons; Diebold-Li dominates at long.** Yield-VAR RMSE 0.1937 at h=1 (6% below RW); Diebold-Li RMSE 1.1415 at h=12 (9% below RW). Both beat the Random Walk — the only models to do so significantly.
+| Comparison | h=1 avg DM | Tenors significant (p<0.10) |
+|-----------|-----------|---------------------------|
+| NS-VAR vs EH Taylor Rule | +8.55 | 11/11 |
+| FAVAR vs EH Taylor Rule | +7.84 | 10/11 |
+| NS-VAR vs Random Walk | −1.92 | 0/11 |
+| FAVAR vs NS-VAR | −1.77 | 0/11 |
+| NS-RW vs NS-VAR | +1.56 | 5/11 |
+| FAVAR-Key4 vs FAVAR | +1.12 | 0/11 |
+| NS-VAR vs Macro-OLS | ~0 | 0/11 |
 
-2. **EH Taylor Rule fails catastrophically (6.7× worse than RW at h=1).** The three-stage EH pipeline — AR(1) macro → Taylor Rule FF path → EH yield averaging — produces RMSE 1.39 at h=1 vs RW 0.21. Two compounding causes: (a) neutral rate r*=2% too high during ZLB; (b) EH ignores term premium structurally.
+NS-VAR and FAVAR both beat the EH Taylor Rule by a wide margin at h=1 — significant across all tenors. But neither beats the Random Walk significantly. NS-RW beats NS-VAR at 5 tenors, which is consistent with the Caldeira et al. (2023) finding that imposing VAR dynamics on NS factors adds noise rather than information.
 
-3. **EH failure is structural, not a missing risk premium.** The EH+TP correction (adding constant term premium from training window) makes RMSE worse (2.88 vs 1.39). The 30Y term premium estimated from the high-rate era (1985-2015) is ≈5.98%, but during the test period actual 30Y yields were 2-4%. Adding this TP produces 8-9% forecasts — a diagnostic failure that confirms the root cause is neutral rate misspecification (r*=2% post-GFC when actual r* ≈ 0.5%), not a missing risk compensation. Time-varying risk prices (Ang-Piazzesi 2003) would be required, not a constant correction.
-
-4. **Rolling window reduces EH RMSE by 25% but cannot rehabilitate it.** Taylor Rule (Rolling, 120-month) achieves RMSE 1.04 at h=1 — confirms structural instability in macro coefficients across regimes. But still 5× worse than RW.
-
-5. **EH failure concentrates in ZLB/COVID (11.97× RW), partially recovers in Hiking Cycle (3.89× RW).** The neutral rate overestimation is worst when FF ≈ 0% (2020-2021). The hiking cycle (2022-2025) provides some relief as actual FF rises toward the Taylor-implied rate.
-
-6. **Macro-OLS ≈ NS-VAR ≈ Random Walk at h=1** (all RMSE 0.20-0.21). Three strict Taylor variables (direct OLS, no EH) match the structured factor models at short horizons.
-
-7. **FAVAR does NOT beat NS-VAR.** Macro augmentation in the VAR hurts — RMSE 0.2674 vs NS-VAR 0.2049 at h=1. FAVAR-Key4 (focused 4-variable panel) reduces this to 0.2092 but remains worse.
-
-8. **Yield-VAR advantage concentrates in the Hiking Cycle (0.887× RW at h=1).** Sub-period analysis answers the professor's question: the 2022-2025 rapid tightening cycle is where pure yield-level autoregression delivers the largest gains. Yield curve dynamics were highly persistent and predictable during rapid tightening.
-
-9. **NS-VAR best in ZLB/COVID (0.937× RW).** Factor structure captures unusual yield-curve shape at near-zero rates better than macro-driven models.
-
-10. **Parsimony wins across macro representations.** Macro-OLS (3 variables, direct OLS) beats FAVAR (25 variables, VAR). FAVAR-Key4 (4 focused variables) beats FAVAR-25. Diebold-Li (fixed-lambda NS with VAR(1)) beats NS-VAR (VAR(2)). In every comparison, the simpler model within its class performs better.
-
-### 10.2 Revised thesis narrative
-
-> **At h=1, yield dynamics dominate macro information.** Yield-VAR and NS-factor models outperform all macro-based forecasts because yield-curve persistence is stronger than the macro transmission lag. At h=12, macro signal (via Diebold-Li and Macro-OLS) becomes useful, but the EH Taylor Rule — the theoretically motivated construction — fails throughout because it imposes a neutral rate from the pre-GFC era on a post-GFC yield curve. The finding is not that Taylor Rule economics is wrong, but that the EH construction cannot handle the structural shift in r* after 2008.
->
-> The EH+TP diagnostic sharpens this: the failure is not fixed by adding a risk premium — it requires re-estimating the equilibrium short rate (a time-varying r* consistent with the ZLB period) or implementing time-varying risk prices. This is the gap between reduced-form macro forecasting (which works via Macro-OLS) and structural monetary policy models (which require an updated neutral rate estimate).
+One thing still to do: formal DM tests for Diebold-Li and Yield-VAR vs RW at h=12. Because h=12 predictions overlap, the standard DM may be mis-sized — Clark-McCracken (2001) is the right test here.
 
 ---
 
-## 11) Open questions for thesis supervisor
+## Conclusions
 
-### 11.1 Interpretation of Macro-OLS vs FAVAR
+1. **At h=1, yield-level persistence matters more than macro information.** Yield-VAR (RMSE 0.19, 6% below RW) is the clear winner. NS-VAR, Macro-OLS, and the Random Walk are all within 0.01 of each other.
 
-Macro-OLS (3-variable direct OLS) beats FAVAR (6-variable VAR with macro PCA). Both use macro information. Possible explanations for FAVAR's failure:
+2. **At h=12, Diebold-Li wins** (RMSE 1.14, 9% below RW). Some macro signal comes through at longer horizons.
 
-- **Dimension penalty:** FAVAR VAR has more parameters — even with expanding window and 430+ training observations, higher-dimensional systems are less stable out-of-sample
-- **PCA information loss:** PCA maximizes variance, not forecast relevance. Key policy signals (inflation, Fed Funds) may be diluted across factors
-- **Direct vs indirect identification:** Macro-OLS explicitly includes Fed Funds as a predictor; FAVAR includes it only through PCA compression
-- **Iterated vs direct forecast:** Macro-OLS uses direct h-step OLS (no iteration error); FAVAR uses iterated VAR (errors compound at h=12)
+3. **EH Taylor Rule fails throughout.** At h=1 it's 6.7× worse than the Random Walk. The problem is structural — the EH assumption gives zero weight to the term premium, which matters especially for long yields.
 
-**Open question:** Is the Macro-OLS advantage due to the forecasting method (direct vs iterated) or the variable selection (3 vs 25)? A FAVAR with direct h-step OLS on NS factors would isolate this.
+4. **Four robustness checks all point to the same conclusion.** Time-varying r* (TVR) barely improves things. A constant term-premium correction makes it worse. A rolling window helps 25% but the model still fails. The EH framework itself is the issue, not any particular parameter.
 
-### 11.2 EH Taylor Rule: neutral rate misspecification
+5. **FAVAR does not improve on NS-VAR.** Adding the full 25-variable macro panel to the VAR increases RMSE from 0.20 to 0.27 at h=1. FAVAR-Key4 (4 focused variables) narrows that gap but still loses.
 
-The EH model assumes r*=2% (constant). Post-GFC evidence (Holston-Laubach-Williams, Lubik-Matthes) suggests r* fell to 0.5% or lower after 2008. This is the likely root cause of EH failure.
+6. **Macro-OLS matches NS-VAR at h=1 with just three variables.** This is the parsimony result: three strict Taylor variables in a direct OLS outperforms a 6-variable factor VAR across most settings.
 
-**Open question:** Would using a time-varying r* estimate (e.g., from Holston-Laubach-Williams) substantially improve the EH Taylor Rule? This is a targeted fix that doesn't require implementing full M-ATSM.
-
-### 11.3 Statistical significance at h=12 for Diebold-Li and Yield-VAR
-
-Both Diebold-Li (0.91× RW) and Yield-VAR (0.93× RW) beat the Random Walk at h=12. These comparisons have not been formally DM tested. Given overlapping 12-month predictions, the standard DM statistic may be mis-sized — **Clark-McCracken (2001) test for nested models** should be used for the DM test at h=12.
-
-### 11.4 Sub-period analysis — ANSWERED
-
-Sub-period RMSE analysis (§8.6) confirms the professor's hypothesis: **Yield-VAR advantage concentrates in the Hiking Cycle (0.887× RW at h=1, vs 1.00× in Pre-COVID)**. EH failure is worst in ZLB/COVID (11.97× RW). This answers the question about whether model rankings are regime-dependent — yes, significantly so.
-
-### 11.5 Rolling window vs Expanding window for EH
-
-The rolling window (120-month) reduces EH RMSE by 25% at h=1 (1.04 vs 1.39). This confirms structural instability in macro coefficients across the GFC/ZLB/hiking-cycle regimes. However, even the rolling window is 5× worse than RW, suggesting the instability is not the primary issue — neutral rate misspecification is.
-
-**Open question:** Would a shorter rolling window (60-month) focused on the post-GFC period (where r* is more stable near 0.5%) further reduce EH RMSE? This would partially approximate a time-varying r*.
-
-### 11.6 No-arbitrage structure (Gemini's M-ATSM suggestion)
-
-The EH+TP diagnostic (§8.5) rules out a *constant* term premium correction. A full no-arbitrage model (Ang-Piazzesi 2003) with time-varying risk prices λ_t = λ₀ + λ₁X_t could theoretically fix both problems: time-varying TP and regime-appropriate neutral rate. However, this requires joint MLE over P-dynamics + Q-dynamics + risk prices — weeks of additional work and a different thesis scope.
-
-**Thesis recommendation:** Frame the EH failure and the EH+TP diagnostic as documenting *why* the EH construction fails (structural neutral rate misspecification, not missing TP), which motivates the M-ATSM literature without requiring its implementation in this thesis.
+7. **Regime matters a lot.** The EH failure is concentrated in 2020–2021 when the ZLB was binding (11.97× RW). Yield-VAR's advantage is concentrated in 2022–2025 during the hiking cycle (0.887× RW).
 
 ---
 
-## 12) File map
+## Open questions
+
+### Why does Macro-OLS beat FAVAR?
+
+Both use macro information. A few possible explanations:
+
+- FAVAR has more parameters and is less stable out-of-sample despite the larger training window
+- PCA compresses 25 variables into 3 factors, which may dilute the most relevant signals (especially Fed Funds)
+- Macro-OLS uses a direct $h$-step regression while FAVAR iterates — compounding errors matter at h=12
+
+The cleanest test would be FAVAR with direct h-step OLS instead of iterated VAR, to separate the variable selection effect from the forecasting method.
+
+### Does time-varying r* fix the EH model? — Answered
+
+No. Using TIPS-based r* (0.19% in 2015, 0.78% in 2018) reduces h=1 RMSE from 1.3857 to 1.3775 — a 0.6% improvement. The EH no-term-premium assumption is the dominant failure, not r* calibration.
+
+### Statistical tests at h=12
+
+Diebold-Li (0.91× RW) and Yield-VAR (0.93× RW) both beat the Random Walk at h=12. These haven't been formally tested yet. Given overlapping 12-month forecasts, the Clark-McCracken (2001) test is needed before claiming significance.
+
+### No-arbitrage model
+
+The EH+TP diagnostic rules out a constant TP correction. To properly rehabilitate EH you'd need time-varying risk prices — an Ang-Piazzesi (2003) type model. That's a different scope of work. For the thesis, I'd frame the EH failure and the diagnostic results as documenting *why* EH breaks down, which motivates that literature without requiring implementation.
+
+---
+
+## File map
 
 | File | Description |
 |------|-------------|
-| `data/yields_raw.csv` | 11-tenor US Treasury yields (FRED DGS series) |
 | `data/feds200628.csv` | GSW zero-coupon yields SVENY01–SVENY30 |
-| `data/processed/ssr_monthly.csv` | Krippner Shadow Short Rate (monthly) |
+| `data/yields_raw.csv` | 11-tenor FRED Treasury yields |
 | `data/macro_raw.csv` | 35 FRED macro series |
-| `notebooks/fetch_data.ipynb` | FRED data download |
-| `notebooks/favar_taylor_comparison_executed.ipynb` | Main analysis — 9 models (61 cells) |
-| `notebooks/favar_taylor_comparison_gsw_executed.ipynb` | **Primary GSW results** — EH Taylor Rule + 3 new analyses (70 cells) |
-| `scripts/run_notebook.py` | Headless executor (nbclient) |
-| `scripts/insert_tp_cells.py` | Inserted EH+TP and rolling-window cells |
-| `scripts/insert_subperiod_cell.py` | Inserted sub-period analysis cells |
-| `scripts/fix_rolling_window.py` | Applied VAR stability fix to rolling window |
-| `CLAUDE.md` | Technical reference for the codebase |
-
-**Figures (saved in `notebooks/figures/`):**
-- `nelson_siegel_factors.png` — NS factors over time
-- `macro_variables.png` — inflation, output, Fed Funds, unemployment
-- `multi_horizon_rmse.png` — average RMSE by model and horizon
-- `yields_favar_vs_taylor_all_tenors.png` — observed vs forecast per tenor
+| `data/processed/ssr_monthly.csv` | Krippner Shadow Short Rate (monthly) |
+| `data/rstar_monthly.csv` | TIPS-based r* series (DFII5 monthly avg, 2003–present; 3.0% pre-2003) |
+| `notebooks/favar_taylor_comparison_gsw_executed.ipynb` | Primary results notebook (72 cells, fully executed) |
+| `notebooks/favar_taylor_comparison_executed.ipynb` | Older FRED-yield notebook (61 cells) |
+| `notebooks/fetch_data.ipynb` | Downloads data from FRED |
+| `docs/favar_taylor_pipeline_professor_review.md` | This document |

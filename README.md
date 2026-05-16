@@ -19,6 +19,7 @@ Master's thesis (Quantitative Finance). Out-of-sample US Treasury yield-curve fo
 | **FAVAR-Key4** | NS factors + 2 PCA factors from {CPI, FEDFUNDS, UNRATE, INDPRO} |
 | **Macro-OLS** | Per-tenor direct OLS with 3 Taylor (1993) variables: π, output gap, FF |
 | **Taylor Rule (EH)** | 3-stage: AR(1) macro → Taylor Rule FF path → Expectations Hypothesis yields |
+| **Taylor Rule (TVR)** | EH with time-varying r* from DFII5 TIPS (answers HLW question — negligible improvement) |
 | **Taylor Rule (Rolling)** | EH with 120-month rolling window + VAR stability check |
 | **Taylor Rule (EH+TP)** | EH + constant term-premium correction (diagnostic — shows TP not the issue) |
 
@@ -40,14 +41,16 @@ Master's thesis (Quantitative Finance). Out-of-sample US Treasury yield-curve fo
 | FAVAR | 0.2674 | 0.8803 | 1.4183 | 1.30 | 1.13 |
 | Taylor Rule (Rolling) | 1.0439 | 1.2907 | 1.7022 | 5.05 | 1.35 |
 | **Taylor Rule (EH)** | **1.3857** | **1.6821** | **2.1612** | **6.71** | **1.72** |
+| Taylor Rule (TVR) | 1.3775 | 1.6970 | 2.2066 | 6.67 | 1.75 |
 | Taylor Rule (EH+TP) | 2.8836 | 3.1801 | 3.5837 | 13.96 | 2.85 |
 
 ### What the numbers say
 
 1. **Yield-VAR and Diebold-Li beat the Random Walk** — the only models to do so (h=1 and h=12 respectively). All other structured models are near-RW or worse.
 2. **EH Taylor Rule fails** (6.7× worse than RW at h=1). The three-stage EH pipeline overestimates yields because the neutral rate assumption r*=2% is too high for the post-GFC low-rate environment.
-3. **EH failure is structural, not a missing risk premium.** Adding a constant term-premium correction (EH+TP) makes RMSE worse (2.88 vs 1.39). The training-era 30Y term premium (~5.98%) overshoots the low-rate test period — confirming the root cause is neutral rate misspecification.
-4. **Rolling window improves EH by 25%** (RMSE 1.04) but cannot close the gap to RW — structural instability across GFC/ZLB/hiking-cycle regimes is real but not the primary problem.
+3. **EH failure is structural, not a missing risk premium.** Adding a constant term-premium correction (EH+TP) makes RMSE worse (2.88 vs 1.39). The training-era 30Y term premium (~5.98%) overshoots the low-rate test period.
+4. **Time-varying r* (TVR) barely helps.** Using TIPS-based r* (0.19% in 2015, 0.78% in 2018 — consistent with HLW estimates) reduces h=1 RMSE from 1.3857 to 1.3775 (0.6% improvement). This directly answers the HLW question: even with a correctly calibrated post-GFC neutral rate, EH still fails 6.67× worse than RW. The EH no-term-premium assumption is the structural failure mode, not r* calibration.
+5. **Rolling window improves EH by 25%** (RMSE 1.04) but cannot close the gap to RW — structural instability across GFC/ZLB/hiking-cycle regimes is real but not the primary problem. Four robustness checks (EH → TVR → Rolling → EH+TP) all confirm EH fails regardless of parameterisation.
 5. **FAVAR does not improve on NS-VAR.** Adding 25-variable PCA macro factors increases RMSE from 0.2049 to 0.2674 at h=1. NS-VAR significantly beats FAVAR at 10/11 tenors (DM tests, p<0.10).
 6. **Macro-OLS ≈ NS-VAR ≈ RW** at h=1. Three strict Taylor variables (direct OLS, no EH) match the sophisticated factor models.
 7. **Sub-period breakdown:** EH failure worst in ZLB/COVID (11.97× RW); Yield-VAR advantage concentrates in the Hiking Cycle (0.887× RW).
@@ -62,6 +65,7 @@ Master's thesis (Quantitative Finance). Out-of-sample US Treasury yield-curve fo
 | FRED Treasury yields | 11 tenors 1M–30Y, daily → monthly | `data/yields_raw.csv` |
 | FRED macro panel | 35 series → 25 pass 90% coverage filter | `data/macro_raw.csv` |
 | Krippner Shadow Short Rate | ZLB-adjusted policy rate | `data/processed/ssr_monthly.csv` |
+| TIPS-based r* (time-varying) | DFII5 monthly avg (2003–present); 3.0% pre-2003 | `data/rstar_monthly.csv` |
 
 **Nelson-Siegel factors:** Monthly nonlinear least-squares. Lambda parameterisation: `exp(-τ/λ)` form used consistently in estimation and reconstruction.
 
@@ -90,6 +94,7 @@ scripts/
   insert_tp_cells.py      ← built the EH+TP analysis cells in GSW notebook
   insert_subperiod_cell.py← built the sub-period RMSE analysis cells
   fix_rolling_window.py   ← applied VAR stability fix to rolling window cell
+  inject_tvr_cells.py     ← injected TVR (time-varying r*) cells into GSW notebook
 
 docs/
   favar_taylor_pipeline_professor_review.md   ← full writeup for thesis supervisor
